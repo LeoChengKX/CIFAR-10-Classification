@@ -9,9 +9,9 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.data import random_split
 
 
-class MLP(nn.Module):
+class MLP_1(nn.Module):
     def __init__(self):
-        super(MLP, self).__init__()
+        super(MLP_1, self).__init__()
         self.fc1 = nn.Linear(32 * 32, 512)  # Flatten the input
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 10)  # Output layer: 10 classes
@@ -24,16 +24,78 @@ class MLP(nn.Module):
         return x
 
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
-    for epoch in range(num_epochs):
+class MLP_2(nn.Module):
+    def __init__(self):
+        super(MLP_2, self).__init__()
+        self.fc1 = nn.Linear(32 * 32, 512)  # Flatten the input
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 128)
+        self.fc4 = nn.Linear(128, 10)  # Output layer: 10 classes
+
+    def forward(self, x):
+        x = x.view(-1, 32 * 32)  # Flatten the input
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
+        return x
+
+
+class MLP_3(nn.Module):
+    def __init__(self):
+        super(MLP_3, self).__init__()
+        self.fc1 = nn.Linear(32 * 32, 512)  # Flatten the input
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 10)
+
+    def forward(self, x):
+        x = x.view(-1, 32 * 32)  # Flatten the input
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.fc5(x)
+        return x
+
+
+def train_and_validate(model, train_loader, val_loader, criterion, optimizer, epochs=10):
+    best_val_accuracy = 0
+    for epoch in range(epochs):
+        # Training phase
+        model.train()
         for images, labels in train_loader:
-            optimizer.zero_grad()  # Zero the parameter gradients
+            optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-        print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+        # Validation phase
+        model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for images, labels in val_loader:
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                correct += (predicted == labels).sum().item()
+                total += labels.size(0)
+        val_accuracy = 100 * correct / total
+        best_val_accuracy = max(best_val_accuracy, val_accuracy)
+    return best_val_accuracy
+
+# def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
+#     for epoch in range(num_epochs):
+#         for images, labels in train_loader:
+#             optimizer.zero_grad()  # Zero the parameter gradients
+#             outputs = model(images)
+#             loss = criterion(outputs, labels)
+#             loss.backward()
+#             optimizer.step()
+#
+#         print(f'Epoch {epoch+1}, Loss: {loss.item()}')
 
 
 def evaluate_model(model, test_loader):
@@ -90,10 +152,22 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
 
     # model
-    model = MLP()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.CrossEntropyLoss()
+    best_model = None
+    best_accuracy = 0
+    best_model_index = None
 
-    train_model(model, train_loader, criterion, optimizer, num_epochs=10)
+    models = [MLP_1(), MLP_2(), MLP_3()]
 
-    evaluate_model(model, test_loader)
+    for index, model in enumerate(models):
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        criterion = nn.CrossEntropyLoss()
+        accuracy = train_and_validate(model, train_loader, val_loader, criterion, optimizer, epochs=10)
+        print(f"MLP_{index + 1} has Validation Accuracy: {accuracy}%")
+
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_model = model
+
+            best_model_index = index
+
+    print(f"Best mdoel is: MLP_{best_model_index+ 1}, Validation Accuracy: {best_accuracy}%")
