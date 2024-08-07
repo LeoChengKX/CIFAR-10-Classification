@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.data import random_split
 
+from torchsummary import summary
 
 class CNN(nn.Module):
     def __init__(self):
@@ -36,18 +37,17 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.Conv2d(256, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Dropout(0.25)
         )
         # Linear layers
         self.fc = nn.Sequential(
-            nn.Linear(256 * 4 * 4, 1024),  # This 4*4 is the spatial size of the image at this stage
+            nn.Linear(64 * 4 * 4, 512),  # This 4*4 is the spatial size of the image at this stage
             nn.ReLU(),
-            nn.Linear(1024, 1024),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(1024, 10)
+            nn.Linear(512, 10)
         )
 
     def forward(self, x):
@@ -116,6 +116,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device:", device)
+    summary(CNN(), (1, 32, 32))
 
     train_data, train_labels = get_dataset()  # N * 3 * 32 * 32, N
     train_label = np.array(train_labels)
