@@ -11,7 +11,8 @@ from torch.utils.data import random_split
 from torchsummary import summary
 
 
-BATCH_NUM = 800
+num_channel = 3
+BATCH_NUM = 512
 
 class CNN(nn.Module):
     def __init__(self):
@@ -19,7 +20,7 @@ class CNN(nn.Module):
         # First block
         self.conv1 = nn.Sequential(
 
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.Conv2d(num_channel, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.ReLU(),
@@ -110,12 +111,12 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
         corr, tot = evaluate_model(model, val_loader)
 
         curr_acc = 100 * corr / tot
-        if curr_acc > acc:
-            acc = curr_acc
-        else:
-            if curr_acc < acc - 1:
-                print("early stop")
-                break
+        # if curr_acc > acc:
+        #     acc = curr_acc
+        # else:
+        #     if curr_acc < acc - 2:
+        #         print("early stop", curr_acc)
+        #         break
         print(f"val acc: {curr_acc}%")
 
         print(f'Epoch {epoch+1}, Loss: {loss.item()}')
@@ -143,18 +144,20 @@ def evaluate_model(model, test_loader):
 
 if __name__ == "__main__":
     import time
-    torch.manual_seed(44)
+    torch.manual_seed(18)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device:", device)
-    summary(CNN().to(device), (3, 32, 32), device="cuda")
+    # summary(CNN().to(device), (3, 32, 32), device="cuda")
 
     train_data, train_labels = get_dataset()  # N * 3 * 32 * 32, N
     train_label = np.array(train_labels)
     N = train_data.shape[0]
 
-    train_data = train_data / 255
-    # train_data = get_grayscale(train_data).reshape((-1, 1, 32, 32)) / 255 # N * 1 * 32 * 32
+    if num_channel == 3:
+        train_data = train_data / 255
+    elif num_channel == 1:
+        train_data = get_grayscale(train_data).reshape((-1, 1, 32, 32)) / 255 # N * 1 * 32 * 32
 
     # plt.imshow(train_data.reshape((N, 32, 32))[1], cmap='gray')
     # plt.axis('off')
@@ -164,8 +167,10 @@ if __name__ == "__main__":
     test_label = np.array(test_label)
     M = test_data.shape[0]
 
-    test_data = test_data / 255
-    # test_data = get_grayscale(test_data).reshape((-1, 1, 32, 32)) / 255
+    if num_channel == 3:
+        test_data = test_data / 255
+    elif num_channel == 1:
+        test_data = get_grayscale(test_data).reshape((-1, 1, 32, 32)) / 255
 
     # -------------------
     # train_loader and val loader
