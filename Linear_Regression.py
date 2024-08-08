@@ -22,7 +22,7 @@ def process_data():
     data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
 
     # Split data_grey to train and validation
-    data_train, data_val, label_train, label_val = train_test_split(data_grey, labels, test_size=0.2, random_state=42)
+    data_train, data_val, label_train, label_val = train_test_split(data_grey, labels, test_size=0.2, random_state=48)
     return data_train, data_val, data_test_grey, label_train, label_val, label_test
 
 
@@ -47,7 +47,7 @@ def cross_entropy_loss(y_pred: np.ndarray, y_true: np.ndarray):
 
     # Compute the cross-entropy loss
     cross_entropy = -np.sum(y_true * log_y_pred, axis=1)
-    return cross_entropy / y_pred.shape[0]
+    return cross_entropy
 
 
 # Convert labels to one-hot-code
@@ -60,18 +60,33 @@ def one_hot_encode(labels: list, num_labels):
 def predict(X: np.ndarray, weights: np.ndarray):
     temp = X @ weights
     probs = softmax(temp)
-    return one_hot_encode(np.argmax(probs, axis=1), 10)
+    return np.argmax(probs, axis=1)
 
 
-def accuracy(y_true: np.ndarray, y_pred: np.ndarray):
-    return np.mean(y_true == y_pred)
+def accuracy(y_true: list, y_pred: list):
+    # Convert lists to numpy arrays for vectorized operations
+    array1 = np.array(y_pred)
+    array2 = np.array(y_true)
+
+    # Ensure both arrays have the same length
+    if len(array1) != len(array2):
+        raise ValueError("Both lists must be of the same length.")
+
+    # Calculate the number of correct predictions
+    correct_predictions = np.sum(array1 == array2)
+
+    # Calculate accuracy as the proportion of correct predictions
+    accuracy_score = correct_predictions / len(array1)
+
+    return accuracy_score
 
 
 def train_softmax(X, y: list, learning_rate, max_iterations):
     num_labels = np.max(y) + 1  # number of labels
-    np.random.seed(42)
+    np.random.seed(49)
     y_one_hot = one_hot_encode(y, num_labels)
     weights = np.random.randn(X.shape[1], num_labels)
+    print(cross_entropy_loss(softmax(X @ weights), y_one_hot))
     for iteration in range(max_iterations):
         temp = X @ weights
         y_pred = softmax(temp)
@@ -85,8 +100,8 @@ def train_softmax(X, y: list, learning_rate, max_iterations):
 
 
 def tuned_alpha_maxiterations(X_train, y_train: list, X_val, y_val: list):
-    max_it_cand = [50, 100, 200, 500]
-    step_size_cand = [0.1, 0.01, 0.5, 0.05]
+    max_it_cand = [10, 50, 100, 200, 500]
+    step_size_cand = [0.1, 0.01, 0.5, 0.005]
     max_ind = 0
     step_size_ind = 0
     best_acc = 0
@@ -100,8 +115,8 @@ def tuned_alpha_maxiterations(X_train, y_train: list, X_val, y_val: list):
 
             # for validation accuracy
             val_pred = predict(X_val, weights)
-            val_true = one_hot_encode(y_val, 10)
-            temp_acc = accuracy(val_pred, val_true)
+            temp_acc = accuracy(val_pred, y_val)
+            print(temp_acc)
 
             # update
             if temp_acc > best_acc:
@@ -114,7 +129,6 @@ def tuned_alpha_maxiterations(X_train, y_train: list, X_val, y_val: list):
 if __name__ == '__main__':
     data_train, data_val, data_test_grey, label_train, label_val, label_test = process_data()
     max_it, step_size, best_val_acc = tuned_alpha_maxiterations(data_train, label_train, data_val, label_val)
-    print(max_it, step_size)
     # 500, 0.1
     weights = train_softmax(data_train, label_train, step_size, max_it)
     test_pred = predict(data_test_grey, weights)
@@ -122,4 +136,5 @@ if __name__ == '__main__':
     print(test_true.shape)
     print(data_train.shape)
     print(test_pred.shape)
-    print(accuracy(test_pred, test_true))
+    print(accuracy(test_pred, label_test))
+    print(one_hot_encode([4,5], 10))

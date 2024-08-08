@@ -1,6 +1,7 @@
 import dataset
 from sklearn.model_selection import train_test_split
 import numpy as np
+from scipy.stats import multivariate_normal
 
 FILE_PATH = 'cifar-10-python.tar.gz'
 DATASET_PATH = 'dataset/'
@@ -15,9 +16,9 @@ def process_data():
     test_data, label_test = dataset.get_dataset(train_split=False)
     test_data = test_data / 255
 
-    data_grey = dataset.get_grayscale(data)
+    data_grey = dataset.get_shuffled(data)
     data_grey = data_grey.reshape(data_grey.shape[0], -1)
-    data_test_grey = dataset.get_grayscale(test_data)
+    data_test_grey = dataset.get_shuffled(test_data)
     data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
 
     return data_grey, data_test_grey, labels, label_test
@@ -27,7 +28,7 @@ def calculate_MLE_Parameters(X: np.ndarray, y: list):
     """
     :param X: train data
     :param y: train labels
-    :return: u, theta, where u is 10 * 3072, and theta is 10 * 3072 * 3072 matrix
+    :return: u, theta, where u is 10 * 1024, and theta is 10 * 1024 * 1024 matrix
     """
     number_features = X.shape[1]
     num_of_classes = 10
@@ -46,60 +47,77 @@ def calculate_MLE_Parameters(X: np.ndarray, y: list):
     return mu, sigma
 
 
-def prior(y: list) -> np.array:
+def calculate_mle_parameters(X, y):
+    # Convert y to a NumPy array if it isn't already one
+    y = np.array(y)
+    num_classes = 10
+    num_features = X.shape[1]
+    mu = np.zeros((num_classes, num_features))
+    sigma_matrices = np.zeros((num_classes, num_features, num_features))
+
+    for c in range(num_classes):
+        indices = np.where(y == c)[0]
+        X_c = X[indices]  # Data for class c
+        N_c = len(indices)  # Number of samples in class c
+
+        if N_c > 0:
+            mu[c] = np.mean(X_c, axis=0)
+            variances = np.var(X_c, axis=0, ddof=0)  # Calculate variances for each feature in class c
+            sigma_matrices[c] = np.diag(variances)  # Create a diagonal matrix with these variances
+        else:
+            mu[c] = np.nan  # Handle classes with no examples
+            sigma_matrices[c] = np.nan  # Handle classes with no examples
+
+    return mu, sigma_matrices
+
+
+def prior(y: list) -> list:
     N = len(y)  # Total number of samples
-    prior_probabilities = np.zeros(10)
+    y = np.array(y)
+    prior_probabilities = []
 
     for c in range(10):
         N_c = np.sum(y == c)  # Number of samples in class c
-        prior_probabilities[c] = N_c / N
+        prior_probabilities.append(N_c / N)
 
     return prior_probabilities
 
 
-def predict(X: np.ndarray, mu, sigma):
-    epsilon = 1e-20
-    num_classes = mu.shape[0]
-    num_features = mu.shape[1]
-    predictions = []
+def predict(X: np.ndarray, mu, sigma) -> list:
+    num_samples = X.shape[0]
+    num_classes = 10
+    log_probs = np.zeros((num_samples, num_classes))
 
-    # Precompute constants
-    log_two_pi = np.log(2 * np.pi)
-    det_sigma = []
-    inv_sigma = []
     for c in range(num_classes):
-        temp = np.abs(np.linalg.det(sigma[c]))
-        if temp < epsilon:
-            temp = epsilon
-        det_sigma.append(temp)
-        inv_sigma.append(np.linalg.inv(sigma[c]))
+        # Compute the log probability density function for class c
+        rv = multivariate_normal(mean=mu[c], cov=sigma[c])
+        log_pdf = rv.logpdf(X)
 
-    for x in X:
-        log_probs = []
-        for c in range(num_classes):
-            if np.any(np.isnan(sigma[c])):
-                # Skip if covariance matrix is NaN
-                log_probs.append(-np.inf)
-                continue
+        # Add the log prior to the log likelihood
+        log_probs[:, c] = log_pdf
 
-            size = num_features
-            det_sigma_c = det_sigma[c]
-            inv_sigma_c = inv_sigma[c]
-            diff = x - mu[c]
+    # Choose the class with the highest log probability
+    predictions = np.argmax(log_probs, axis=1)
 
-            # Log probability density calculation
-            log_prob_density = -0.5 * (size * log_two_pi + np.log(det_sigma_c) + diff.T @ inv_sigma_c @ diff)
-            log_probs.append(log_prob_density)
-
-        # Classify to the class with the highest log probability
-        predictions.append(np.argmax(log_probs))
-        print(len(predictions))
-
-    return np.array(predictions)
+    return predictions.tolist()
 
 
-def accuracy(y_pred: list, y_true: list):
-    return np.mean(y_true == y_pred)
+def accuracy(y_true: list, y_pred: list):
+    # Convert lists to numpy arrays for vectorized operations
+    array1 = np.array(y_pred)
+    array2 = np.array(y_true)
+
+    # Ensure both arrays have the same length
+    if len(array1) != len(array2):
+        raise ValueError("Both lists must be of the same length.")
+
+    # Calculate the number of correct predictions
+    correct_predictions = np.sum(array1 == array2)
+
+    # Calculate accuracy as the proportion of correct predictions
+    accuracy_score = correct_predictions / len(array1)
+
+    return accuracy_score
 
 
 def one_hot_encode(labels: list, num_labels):
@@ -108,13 +126,39 @@ def one_hot_encode(labels: list, num_labels):
     return one_hot
 
 
+def calculate_MAP_pre(X: np.ndarray, mu, sigma, priors: list) -> list:
+    num_samples = X.shape[0]
+    num_classes = len(priors)
+    log_probs = np.zeros((num_samples, num_classes))
+
+    for c in range(num_classes):
+        # Compute the log probability density function for class c
+        rv = multivariate_normal(mean=mu[c], cov=sigma[c])
+        log_pdf = rv.logpdf(X)
+
+        # Add the log prior to the log likelihood
+        log_probs[:, c] = log_pdf + np.log(priors[c])
+
+    # Choose the class with the highest log probability
+    predictions = np.argmax(log_probs, axis=1)
+
+    return predictions.tolist()
+
+
 if __name__ == '__main__':
     data_grey, data_test_grey, labels, label_test = process_data()
-    mu, sigma = calculate_MLE_Parameters(data_grey, labels)
+    mu_1, sigma_1 = calculate_mle_parameters(data_grey, labels)
+    mu_2, sigma_2 = calculate_MLE_Parameters(data_grey, labels)
+    print(len(label_test))
     prior_prob = prior(labels)
-    print(mu.shape)
-    print(sigma.shape)
-    print(prior_prob.shape)
-    prediction = predict(data_test_grey, mu, sigma)
-    print(prediction.shape)
-    print(accuracy(prediction, label_test))
+    print(mu_1.shape)
+    print(sigma_1.shape)
+    prediction_map_1 = calculate_MAP_pre(data_test_grey, mu_1, sigma_1, prior_prob)
+    print(prediction_map_1)
+    prediction_map_2 = calculate_MAP_pre(data_test_grey, mu_2, sigma_2, prior_prob)
+    print(accuracy(prediction_map_1, label_test))
+    print(accuracy(prediction_map_2, label_test))
+    prediction_1 = predict(data_test_grey, mu_1, sigma_1)
+    prediction_2 = predict(data_test_grey, mu_2, sigma_2)
+    print(accuracy(prediction_1, label_test))
+    print(accuracy(prediction_2, label_test))
