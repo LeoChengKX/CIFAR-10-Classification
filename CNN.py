@@ -11,8 +11,9 @@ from torch.utils.data import random_split
 from torchsummary import summary
 
 
+SEED = 77
 num_channel = 3
-BATCH_NUM = 512
+BATCH_NUM = 88
 
 class CNN(nn.Module):
     def __init__(self):
@@ -144,7 +145,10 @@ def evaluate_model(model, test_loader):
 
 if __name__ == "__main__":
     import time
-    torch.manual_seed(18)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device:", device)
@@ -178,7 +182,7 @@ if __name__ == "__main__":
     train_labels_tensor = torch.tensor(train_label, dtype=torch.long).to(device)
     train_dataset = TensorDataset(train_data_tensor, train_labels_tensor)
 
-    train_size = int(0.8 * len(train_dataset))  # 80% for training
+    train_size = int(0.95 * len(train_dataset))  # 80% for training
     val_size = len(train_dataset) - train_size  # Remaining 20% for validation
 
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
@@ -191,11 +195,14 @@ if __name__ == "__main__":
     test_dataset = TensorDataset(test_data_tensor, test_labels_tensor)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_NUM, shuffle=True)
 
-    # model
-    best_model = None
-    best_accuracy = 0
-    best_model_index = None
+    train_iterator, val_iterator, test_iterator = iter(train_loader), iter(val_loader), iter(test_loader)
+    x, y, z = next(train_iterator), next(val_iterator), next(test_iterator)
+    _, tra_label = x
+    _, val_labe = y
+    _, te_label = z
+    print(tra_label[0:10], val_labe[0:10], te_label[0:10])
 
+    # model
     model = CNN().to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
