@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import torch
-import torchvision.transforms.functional as F
+import torch.nn.functional as F
 
 FILE_PATH = 'cifar-10-python.tar.gz'
 DATASET_PATH = 'dataset/'
@@ -75,7 +75,9 @@ def get_shuffled(image: np.ndarray):
 
 
 def crop_image(image: np.ndarray, size=0):
-    return image[:, :, size:(32 - size), size:(32 - size)]
+    return np.pad(image[:, :, size:(32 - size), size:(32 - size)], pad_width=((0, 0), (0, 0), (size, size), (size, size)),
+                  mode="constant", constant_values=0)
+
 
 
 def dropout_image(image: np.ndarray, probability=0.1):
@@ -92,5 +94,5 @@ if __name__ == '__main__':
     data, labels = get_dataset()
 
     print(labels[0])
-    print(dropout_image(data).shape)
-    visualize(dropout_image(data)[1], cmap='color')
+    print(crop_image(data).shape)
+    visualize(crop_image(data, size=5)[1], cmap='color')
