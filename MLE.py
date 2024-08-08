@@ -16,9 +16,9 @@ def process_data():
     test_data, label_test = dataset.get_dataset(train_split=False)
     test_data = test_data / 255
 
-    data_grey = dataset.get_grayscale(data)
+    data_grey = dataset.get_shuffled(data)
     data_grey = data_grey.reshape(data_grey.shape[0], -1)
-    data_test_grey = dataset.get_grayscale(test_data)
+    data_test_grey = dataset.get_shuffled(test_data)
     data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
 
     return data_grey, data_test_grey, labels, label_test

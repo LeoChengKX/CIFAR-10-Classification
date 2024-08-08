@@ -4,6 +4,8 @@ import os
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import torch
+import torchvision.transforms.functional as F
 
 FILE_PATH = 'cifar-10-python.tar.gz'
 DATASET_PATH = 'dataset/'
@@ -48,9 +50,9 @@ def get_dataset(train_split=True):
     return data, labels
 
 
-def visualize(data):
+def visualize(data, cmap='gray'):
     # plt.imshow(np.transpose(get_grayscale(data)[6], (1, 2, 0)))
-    plt.imshow(get_grayscale(data)[1], cmap='gray')
+    plt.imshow(data.transpose(1, 2, 0))
     plt.axis('off')
     plt.show()
 
@@ -63,10 +65,32 @@ def get_grayscale(image: np.ndarray):
     return gray_images
 
 
+def get_shuffled(image: np.ndarray):
+    # bs, 3, img_size, img_size
+    img_size = image.shape[2]
+    per = torch.randperm(img_size ** 2)
+    flat = image.reshape((image.shape[0], 3, img_size ** 2))
+    flat = flat[:, :, per]
+    return flat.reshape(image.shape[0], 3, img_size, img_size)
+
+
+def crop_image(image: np.ndarray, size=0):
+    return image[:, :, size:(32 - size), size:(32 - size)]
+
+
+def dropout_image(image: np.ndarray, probability=0.1):
+    mask = np.random.rand(image.shape[0], 32, 32) < probability
+    mask = np.stack([mask, mask, mask], axis=1)
+
+    black = np.zeros_like(image)
+    return np.where(mask, black, image)
+
+
 if __name__ == '__main__':
     prepare_dataset()
 
     data, labels = get_dataset()
 
     print(labels[0])
-    visualize(data)
+    print(dropout_image(data).shape)
+    visualize(dropout_image(data)[1], cmap='color')
