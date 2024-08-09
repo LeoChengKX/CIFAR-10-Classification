@@ -16,10 +16,10 @@ def process_data():
     test_data, label_test = dataset.get_dataset(train_split=False)
     test_data = test_data / 255
 
-    data_grey = dataset.get_shuffled(data)
-    data_grey = data_grey.reshape(data_grey.shape[0], -1)
-    data_test_grey = dataset.get_shuffled(test_data)
-    data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
+    data_grey = dataset.dropout_image(data)
+    data_grey = data_grey.reshape(data.shape[0], -1)
+    data_test_grey = dataset.dropout_image(test_data)
+    data_test_grey = data_test_grey.reshape(test_data.shape[0], -1)
 
     return data_grey, data_test_grey, labels, label_test
 
@@ -117,7 +117,7 @@ def accuracy(y_true: list, y_pred: list):
     # Calculate accuracy as the proportion of correct predictions
     accuracy_score = correct_predictions / len(array1)
 
-    return accuracy_score
+    return round(accuracy_score, 4)
 
 
 def one_hot_encode(labels: list, num_labels):

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from dataset import get_dataset, get_grayscale
+from dataset import get_dataset, get_grayscale, dropout_image, crop_image
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     train_data, train_labels = get_dataset()  # N * 3 * 32 * 32, N
     train_labels = np.array(train_labels)
     N = train_data.shape[0]
-    train_data = get_grayscale(train_data).reshape((N, -1))  # N * 1024
+    train_data = crop_image(train_data, 2).reshape((N, -1))  # N * 1024
 
     train_data, val_data, train_labels, val_label = train_test_split(train_data, train_labels, train_size=0.8)
     num_train = train_data.shape[0]
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     test_data, test_label = get_dataset(False)
     test_label = np.array(test_label)
     M = test_data.shape[0]
-    test_data = get_grayscale(test_data).reshape((M, -1))
+    test_data = crop_image(test_data, 2).reshape((M, -1))
 
     start_time = time.time()
     accuracy = []
