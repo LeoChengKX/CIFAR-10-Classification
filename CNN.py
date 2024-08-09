@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from dataset import get_dataset, get_grayscale
+from dataset import get_dataset, get_grayscale, get_shuffled, crop_image, dropout_image
 import numpy as np
 
 import torch
@@ -11,7 +11,7 @@ from torch.utils.data import random_split
 from torchsummary import summary
 
 
-SEED = 77
+SEED = 42
 num_channel = 3
 BATCH_NUM = 88
 
@@ -176,6 +176,10 @@ if __name__ == "__main__":
     elif num_channel == 1:
         test_data = get_grayscale(test_data).reshape((-1, 1, 32, 32)) / 255
 
+    train_data = crop_image(train_data, 8)
+    test_data = crop_image(test_data, 8)
+    print("crop")
+
     # -------------------
     # train_loader and val loader
     train_data_tensor = torch.tensor(train_data, dtype=torch.float32).to(device)
@@ -206,6 +210,7 @@ if __name__ == "__main__":
     model = CNN().to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
     train_model(model, train_loader, criterion, optimizer, num_epochs=23)
