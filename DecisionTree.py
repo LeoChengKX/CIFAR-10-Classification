@@ -22,9 +22,10 @@ if __name__ == '__main__':
     train_data, train_labels = get_dataset()
     test_data, test_labels = get_dataset(False)
 
-    train_data, test_data = get_grayscale(train_data) / 255, get_grayscale(test_data) / 255
+    train_data, test_data = get_shuffled(train_data) / 255, get_shuffled(test_data) / 255
 
-    train_data, test_data = train_data.reshape(-1, 32 * 32), test_data.reshape(-1, 32 * 32)
+    train_data, test_data = (train_data.reshape(-1, train_data.shape[1]*train_data.shape[2]*train_data.shape[3]),
+                             test_data.reshape(-1, test_data.shape[1]*test_data.shape[2]*test_data.shape[3]))
     max_depth = 5
     max_score = 0
     best_tree = None
@@ -42,7 +43,24 @@ if __name__ == '__main__':
             best_tree = tree
         scores.append(score)
 
-    tf = time.time()
+    max_score = round(max(scores), 4)
+    max_score_index = scores.index(max_score)
+    max_depth = depths[max_score_index]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(depths, scores, marker='o')
+    plt.title('Decision Tree Performance by Depth(shuffled)')
+    plt.xlabel('Depth of tree')
+    plt.ylabel('Accuracy')
+    plt.grid(True)
+    plt.xticks(depths)
+
+    # Highlight the point with maximum accuracy
+    plt.scatter(max_depth, max_score, color='red')  # add a red dot
+    plt.text(max_depth, max_score, f' ({max_depth}, {max_score:.2f})', color='red', ha='left', va='bottom')
+
+    plt.show()
+
     plot_tree(best_tree, max_depth=5)
 
     plt.plot(scores, depths)

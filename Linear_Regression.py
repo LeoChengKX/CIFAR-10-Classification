@@ -16,10 +16,10 @@ def process_data():
     test_data, label_test = dataset.get_dataset(train_split=False)
     test_data = test_data / 255
 
-    data_grey = dataset.get_grayscale(data)
-    data_grey = data_grey.reshape(data_grey.shape[0], -1)
-    data_test_grey = dataset.get_grayscale(test_data)
-    data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
+    """data_grey = dataset.dropout_image(data)"""
+    data_grey = data.reshape(data.shape[0], -1)
+    """data_test_grey = dataset.dropout_image(test_data)"""
+    data_test_grey = test_data.reshape(test_data.shape[0], -1)
 
     # Split data_grey to train and validation
     data_train, data_val, label_train, label_val = train_test_split(data_grey, labels, test_size=0.2, random_state=48)
@@ -78,7 +78,7 @@ def accuracy(y_true: list, y_pred: list):
     # Calculate accuracy as the proportion of correct predictions
     accuracy_score = correct_predictions / len(array1)
 
-    return accuracy_score
+    return round(accuracy_score, 4)
 
 
 def train_softmax(X, y: list, learning_rate, max_iterations):
@@ -114,7 +114,7 @@ def tuned_alpha_maxiterations(X_train, y_train: list, X_val, y_val: list):
             weights = train_softmax(X_train, y_train, step_size, max_it)
 
             # for validation accuracy
-            val_pred = predict(X_val, weights)
+            val_pred = predict(X_val, weights).tolist()
             temp_acc = accuracy(val_pred, y_val)
             print(temp_acc)
 
@@ -133,8 +133,5 @@ if __name__ == '__main__':
     weights = train_softmax(data_train, label_train, step_size, max_it)
     test_pred = predict(data_test_grey, weights)
     test_true = one_hot_encode(label_test, 10)
-    print(test_true.shape)
-    print(data_train.shape)
-    print(test_pred.shape)
     print(accuracy(test_pred, label_test))
-    print(one_hot_encode([4,5], 10))
+    print(max_it, step_size)

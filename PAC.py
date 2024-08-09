@@ -21,9 +21,9 @@ def process_data():
     test_data, label_test = dataset.get_dataset(train_split=False)
     test_data = test_data / 255
 
-    data_grey = dataset.get_grayscale(data)
+    data_grey = dataset.get_shuffled(data)
     data_grey = data_grey.reshape(data_grey.shape[0], -1)
-    data_test_grey = dataset.get_grayscale(test_data)
+    data_test_grey = dataset.get_shuffled(test_data)
     data_test_grey = data_test_grey.reshape(data_test_grey.shape[0], -1)
 
     # Split data_grey to train and validation
@@ -44,28 +44,29 @@ def pca_apply(X_train, K):
 
 def find_K(X_train: np.ndarray, X_labels: list, val_train: np.ndarray, y_labels: list):
     candidate_K = [25]
-    depths = [1]
+    depths = [1, 5, 10, 100]
     best_K = 50
     best_depth = 5
     best_acc = 0
     best_pca = None
+    best_scaler = None
     for k in candidate_K:
         for depth in depths:
             print(k)
             print(depth)
-            X_train_pca, pca, scalar = pca_apply(X_train, k)
-            val_train_scaled = pca.transform(val_train)
-            result = KNN(depth, X_train_pca, np.array(X_labels), val_train_scaled)
+            X_train_pca, pca, scaler = pca_apply(X_train, k)
+            val_train_scaled = scaler.fit_transform(val_train)
+            val_train_pca = pca.transform(val_train_scaled)
+            result = KNN(depth, X_train_pca, np.array(X_labels), val_train_pca)
             score = accuracy(result.tolist(), y_labels)
-            """tree = DecisionTreeClassifier(criterion='gini', max_depth=depth).fit(X_train_pca, X_labels)
-            val_train_scaled = pca.transform(val_train)
-            score = validation(tree, val_train_scaled, y_labels)"""
+            print(depth, score)
             if score > best_acc:
                 best_acc = score
                 best_K = k
                 best_depth = depth
                 best_pca = pca
-    return best_K, best_depth, best_acc, best_pca
+                best_scaler = scaler
+    return best_K, best_depth, best_acc, best_pca, best_scaler
 
 
 def accuracy(y_true: list, y_pred: list):
@@ -83,7 +84,7 @@ def accuracy(y_true: list, y_pred: list):
     # Calculate accuracy as the proportion of correct predictions
     accuracy_score = correct_predictions / len(array1)
 
-    return accuracy_score
+    return round(accuracy_score, 4)
 
 
 def one_hot_encode(labels: list, num_labels):
@@ -94,8 +95,11 @@ def one_hot_encode(labels: list, num_labels):
 
 if __name__ == "__main__":
     data_train, data_val, data_test_grey, label_train, label_val, label_test = process_data()
-    best_k, best_d, best_acc, best_pca = find_K(data_train, label_train, data_val, label_val)
-    train_data_scaled = best_pca.transform(data_train)
-    test_data_scaled = best_pca.transform(data_test_grey)
-    result = KNN(best_k, train_data_scaled, np.array(label_train), test_data_scaled)
+    best_k, best_d, best_acc, best_pca, best_scaler = find_K(data_train, label_train, data_val, label_val)
+    data_train_scaled = best_scaler.transform(data_train)
+    train_data_pca = best_pca.transform(data_train_scaled)
+    test_data_scaled = best_scaler.transform(data_test_grey)
+    test_data_pca = best_pca.transform(test_data_scaled)
+    result = KNN(best_k, train_data_pca, np.array(label_train), test_data_pca)
+    print(best_d)
     print(accuracy(result.tolist(), label_test))
