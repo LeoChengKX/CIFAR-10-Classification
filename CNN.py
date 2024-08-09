@@ -11,7 +11,7 @@ from torch.utils.data import random_split
 from torchsummary import summary
 
 
-SEED = 42
+SEED = 66
 num_channel = 3
 BATCH_NUM = 88
 
@@ -176,8 +176,8 @@ if __name__ == "__main__":
     elif num_channel == 1:
         test_data = get_grayscale(test_data).reshape((-1, 1, 32, 32)) / 255
 
-    train_data = crop_image(train_data, 8)
-    test_data = crop_image(test_data, 8)
+    train_data = crop_image(train_data, 2)
+    test_data = get_shuffled(test_data)
     print("crop")
 
     # -------------------

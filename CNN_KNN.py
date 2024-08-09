@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 from KNN import KNN
-from dataset import get_dataset, get_grayscale
+from dataset import get_dataset, get_grayscale, get_shuffled, crop_image, dropout_image
 import numpy as np
 
 import torch
@@ -95,6 +95,9 @@ if __name__ == "__main__":
     elif num_channel == 3:
         test_data = get_grayscale(test_data).reshape((-1, 1, 32, 32)) / 255
 
+    train_data = dropout_image(train_data)
+    test_data = dropout_image(test_data)
+
     # -------------------
     # train_loader and val loader
     train_data_tensor = torch.tensor(train_data, dtype=torch.float32).to(device)
@@ -152,7 +155,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     accuracy = []
-    k_val = range(1, 20, 2)
+    k_val = range(0, 100, 5 )
     for k in k_val:
         correct = 0
         total = 0
@@ -163,18 +166,21 @@ if __name__ == "__main__":
             total += 100
             print(f"from {i} to {i + 100}, correct is {corr}")
         print(f"cor is {correct}, total is {total}")
-        acc = correct / total
+        acc = 100 * correct / total
         accuracy.append(acc)
 
         curr_time = time.time()
-        print(f"{curr_time-start_time} seconds, k is {k}, accuracy is {acc}")
+        print(f"{curr_time-start_time} seconds, k is {k}, accuracy is {acc}%")
+
 
     print(accuracy)
+
+
 
     plt.plot(k_val, accuracy, marker='o', linestyle='-', color='b')
     plt.title('KNN Accuracy vs. K')
     plt.xlabel('k')
-    plt.ylabel('Accuracy')
+    plt.ylabel('Accuracy(%)')
     plt.grid(True)
     plt.xticks(k_val)
     plt.savefig('CNN_KNN.png')
